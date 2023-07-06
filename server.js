@@ -117,7 +117,35 @@ app.get("/soccer/match/:id/events", async (req, res) => {});
 
 app.get("/soccer/match/:id/stats", async (req, res) => {});
 
-app.get("/soccer/match/:id/lineups", async (req, res) => {});
+app.get("/soccer/match/:id/lineups", async (req, res) => {
+	console.log("request to backend for match lineups");
+
+	const { id } = req.params;
+	const options = {
+		method: "GET",
+		url: "https://api-football-v1.p.rapidapi.com/v3/fixtures/lineups",
+		params: { fixture: id },
+		headers: {
+			"X-RapidAPI-Key": process.env.RAPID_API_KEY,
+			"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+		},
+	};
+
+	try {
+		const response = await axios.request(options);
+		const statusCode = response.status;
+		if (statusCode === 200) {
+			const [team1, team2] = response.data.response;
+			return res.json({ data: { team1, team2 } }); // no parsing for lineups
+		} else {
+			return res.json({
+				error: "Could not obtain match lineups from API-Football",
+			});
+		}
+	} catch (error) {
+		return res.json({ error });
+	}
+});
 
 app.listen(port, () => {
 	console.log(`Example app listening on port ${port}`);
