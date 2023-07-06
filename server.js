@@ -5,6 +5,7 @@ const port = 3000;
 const axios = require("axios");
 const parseStandings = require("./parsing-functions/parseStandings.js");
 const parseTopScorers = require("./parsing-functions/parseTopScorers.js");
+const parseMatches = require("./parsing-functions/parseMatches.js");
 
 app.get("/soccer/helloworld", (req, res) => {
 	res.json(`Hello World!`);
@@ -78,7 +79,42 @@ app.get("/soccer/topscorers/:league/:season", async (req, res) => {
 	}
 });
 
-app.get("/soccer/matches/:league/:season", async (req, res) => {});
+app.get("/soccer/matches/:league/:season", async (req, res) => {
+	console.log("request to backend for matches");
+
+	const { league, season } = req.params;
+	const options = {
+		method: "GET",
+		url: "https://api-football-v1.p.rapidapi.com/v3/fixtures",
+		params: {
+			league: league,
+			season: season,
+		},
+		headers: {
+			"X-RapidAPI-Key": process.env.RAPID_API_KEY,
+			"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+		},
+	};
+
+	try {
+		const response = await axios.request(options);
+		const statusCode = response.status;
+		if (statusCode === 200) {
+			const data = response.data.response;
+			// console.log(data);
+			const { parsedData, rounds } = parseMatches(data);
+			// console.log(parsedData);
+			console.log(rounds);
+			return res.json({ data: { matches: parsedData, rounds } });
+		} else {
+			return res.json({
+				error: "Could not obtain matches from API-Football",
+			});
+		}
+	} catch (error) {
+		return res.json({ error });
+	}
+});
 
 app.get("/soccer/match/:id/events", async (req, res) => {});
 
