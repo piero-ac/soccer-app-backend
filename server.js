@@ -101,10 +101,7 @@ app.get("/soccer/matches/:league/:season", async (req, res) => {
 		const statusCode = response.status;
 		if (statusCode === 200) {
 			const data = response.data.response;
-			// console.log(data);
 			const { parsedData, rounds } = parseMatches(data);
-			// console.log(parsedData);
-			console.log(rounds);
 			return res.json({ data: { matches: parsedData, rounds } });
 		} else {
 			return res.json({
