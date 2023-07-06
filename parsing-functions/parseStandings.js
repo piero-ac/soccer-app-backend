@@ -1,4 +1,4 @@
-export default function parseStandings(data) {
+function parseStandings(data) {
 	const parsedData = [];
 	for (let team of data) {
 		parsedData.push({
@@ -20,3 +20,5 @@ export default function parseStandings(data) {
 
 	return parsedData;
 }
+
+module.exports = parseStandings;
