@@ -6,6 +6,8 @@ const axios = require("axios");
 const parseStandings = require("./parsing-functions/parseStandings.js");
 const parseTopScorers = require("./parsing-functions/parseTopScorers.js");
 const parseMatches = require("./parsing-functions/parseMatches.js");
+const parseEvents = require("./parsing-functions/parseEvents.js");
+const parseStatistics = require("./parsing-functions/parseStatistics.js");
 
 app.get("/soccer/helloworld", (req, res) => {
 	res.json(`Hello World!`);
@@ -113,9 +115,67 @@ app.get("/soccer/matches/:league/:season", async (req, res) => {
 	}
 });
 
-app.get("/soccer/match/:id/events", async (req, res) => {});
+app.get("/soccer/match/:id/events", async (req, res) => {
+	console.log("request to backend for match events");
 
-app.get("/soccer/match/:id/stats", async (req, res) => {});
+	const { id } = req.params;
+	const options = {
+		method: "GET",
+		url: "https://api-football-v1.p.rapidapi.com/v3/fixtures/events",
+		params: { fixture: id },
+		headers: {
+			"X-RapidAPI-Key": process.env.RAPID_API_KEY,
+			"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+		},
+	};
+
+	try {
+		const response = await axios.request(options);
+		const statusCode = response.status;
+		if (statusCode === 200) {
+			const data = response.data.response;
+			const parsedData = parseEvents(data);
+			return res.json({ data: parsedData });
+		} else {
+			return res.json({
+				error: "Could not obtain match events from API-Football",
+			});
+		}
+	} catch (error) {
+		return res.json({ error });
+	}
+});
+
+app.get("/soccer/match/:id/stats", async (req, res) => {
+	console.log("request to backend for match statistics");
+
+	const { id } = req.params;
+	const options = {
+		method: "GET",
+		url: "https://api-football-v1.p.rapidapi.com/v3/fixtures/statistics",
+		params: { fixture: id },
+		headers: {
+			"X-RapidAPI-Key": process.env.RAPID_API_KEY,
+			"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+		},
+	};
+
+	try {
+		const response = await axios.request(options);
+		const statusCode = response.status;
+		if (statusCode === 200) {
+			const data = response.data.response;
+			const parsedData = parseStatistics(data);
+			return res.json({ data: parsedData });
+		} else {
+			return res.json({
+				error: "Could not obtain match statistics from API-Football",
+			});
+		}
+	} catch (error) {
+		return res.json({ error });
+	}
+});
 
 app.get("/soccer/match/:id/lineups", async (req, res) => {
 	console.log("request to backend for match lineups");
