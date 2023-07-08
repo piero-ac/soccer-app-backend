@@ -33,7 +33,7 @@ app.get("/soccer/table/:league/:season", async (req, res) => {
 	const cachedData = await redisClient.get(key);
 	if (cachedData) {
 		console.log("Table Data in cache");
-		return res.json({ data: JSON.parse(cachedData) });
+		return res.status(200).json({ data: JSON.parse(cachedData) });
 	} else {
 		console.log("Table Data not in cache");
 		const options = {
@@ -59,49 +59,62 @@ app.get("/soccer/table/:league/:season", async (req, res) => {
 					EX: ONE_DAY,
 					NX: true,
 				});
-				return res.json({ data: parsedData });
+				return res.status(200).json({ data: parsedData });
 			} else {
-				return res.json({
+				return res.status(500).json({
 					error: "Could not obtain standings from API-Football",
 				});
 			}
 		} catch (error) {
-			return res.json({ error });
+			return res.status(500).json({ error });
 		}
 	}
 });
 
 app.get("/soccer/topscorers/:league/:season", async (req, res) => {
 	console.log("request to backend for topscorers");
-
 	const { league, season } = req.params;
-	const options = {
-		method: "GET",
-		url: "https://api-football-v1.p.rapidapi.com/v3/players/topscorers",
-		params: {
-			league: league,
-			season: season,
-		},
-		headers: {
-			"X-RapidAPI-Key": process.env.RAPID_API_KEY,
-			"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
-		},
-	};
+	const key = `topScorers-l=${league}-s=${season}`;
 
-	try {
-		const response = await axios.request(options);
-		const statusCode = response.status;
-		if (statusCode === 200) {
-			const data = response.data.response;
-			const parsedData = parseTopScorers(data);
-			return res.json({ data: parsedData });
-		} else {
-			return res.json({
-				error: "Could not obtain top scorers from API-Football",
-			});
+	// See if data in redis cache
+	const cachedData = await redisClient.get(key);
+	if (cachedData) {
+		console.log("Top Scorers Data in cache");
+		return res.status(200).json({ data: JSON.parse(cachedData) });
+	} else {
+		console.log("Top Scorers Data not in cache");
+		const options = {
+			method: "GET",
+			url: "https://api-football-v1.p.rapidapi.com/v3/players/topscorers",
+			params: {
+				league: league,
+				season: season,
+			},
+			headers: {
+				"X-RapidAPI-Key": process.env.RAPID_API_KEY,
+				"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+			},
+		};
+
+		try {
+			const response = await axios.request(options);
+			const statusCode = response.status;
+			if (statusCode === 200) {
+				const data = response.data.response;
+				const parsedData = parseTopScorers(data);
+				await redisClient.set(key, JSON.stringify(parsedData), {
+					EX: ONE_DAY,
+					NX: true,
+				});
+				return res.status(200).json({ data: parsedData });
+			} else {
+				return res.status(500).json({
+					error: "Could not obtain top scorers from API-Football",
+				});
+			}
+		} catch (error) {
+			return res.status(500).json({ error });
 		}
-	} catch (error) {
-		return res.json({ error });
 	}
 });
 
