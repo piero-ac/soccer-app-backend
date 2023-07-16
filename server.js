@@ -11,7 +11,15 @@ const parseMatches = require("./parsing-functions/parseMatches.js");
 const parseEvents = require("./parsing-functions/parseEvents.js");
 const parseStatistics = require("./parsing-functions/parseStatistics.js");
 
-const redisClient = redis.createClient(process.env.REDIS_URI);
+let redisClient;
+(async () => {
+	const url = process.env.REDIS_URI;
+	redisClient = redis.createClient({ url });
+
+	redisClient.on("error", (error) => console.error(`Error : ${error}`));
+
+	await redisClient.connect();
+})();
 
 app.get("/soccer/helloworld", (req, res) => {
 	res.json(`Hello World!`);
