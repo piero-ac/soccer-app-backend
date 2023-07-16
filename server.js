@@ -4,6 +4,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const axios = require("axios");
 const redis = require("redis");
+const cors = require("cors");
 const ONE_DAY = 86400;
 const parseStandings = require("./parsing-functions/parseStandings.js");
 const parseTopScorers = require("./parsing-functions/parseTopScorers.js");
@@ -20,6 +21,8 @@ let redisClient;
 
 	await redisClient.connect();
 })();
+
+app.use(cors());
 
 app.get("/soccer/helloworld", (req, res) => {
 	res.json(`Hello World!`);
