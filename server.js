@@ -13,7 +13,7 @@ const parseStatistics = require("./parsing-functions/parseStatistics.js");
 
 let redisClient;
 (async () => {
-	redisClient = redis.createClient();
+	redisClient = redis.createClient(process.env.REDIS_URI);
 
 	redisClient.on("error", (error) => console.error(`Error : ${error}`));
 
