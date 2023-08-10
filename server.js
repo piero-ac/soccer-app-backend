@@ -39,9 +39,9 @@ let redisClient;
 
 app.use(cors());
 
-app.get("/soccer/helloworld", (req, res) => {
-	res.json(`Hello World!`);
-});
+// app.get("/soccer/helloworld", (req, res) => {
+// 	res.json(`Hello World!`);
+// });
 
 // Route for obtaining the standings for the specified league and season
 app.get("/soccer/table/:league/:season", async (req, res) => {
@@ -159,12 +159,15 @@ app.get("/soccer/matches/:league/:season", async (req, res) => {
 	const cachedRoundsData = await redisClient.get(roundsKey);
 
 	if (cachedMatchesData) {
-		console.log("Matches Data in cache");
+		console.log("MATCHES DATA in cache");
+		// Get the remaining TTL in ms
+		const ttl = (await redisClient.ttl(matchesKey)) * 1000;
 		return res.status(200).json({
 			data: {
 				matches: JSON.parse(cachedMatchesData),
 				rounds: JSON.parse(cachedRoundsData),
 			},
+			expiration: ttl,
 		});
 	} else {
 		console.log("Matches Data not in cache");
@@ -185,17 +188,21 @@ app.get("/soccer/matches/:league/:season", async (req, res) => {
 			const response = await axios.request(options);
 			const statusCode = response.status;
 			if (statusCode === 200) {
+				const expirationTime = msToMidnightUTC();
 				const data = response.data.response;
 				const { parsedData, rounds } = parseMatches(data);
 				await redisClient.set(matchesKey, JSON.stringify(parsedData), {
-					EX: ONE_DAY,
+					PX: expirationTime,
 					NX: true,
 				});
 				await redisClient.set(roundsKey, JSON.stringify(rounds), {
-					EX: ONE_DAY,
+					PX: expirationTime,
 					NX: true,
 				});
-				return res.status(200).json({ data: { matches: parsedData, rounds } });
+				return res.status(200).json({
+					data: { matches: parsedData, rounds },
+					expiration: expirationTime,
+				});
 			} else {
 				return res.status(500).json({
 					error: "Could not obtain matches from API-Football",
@@ -341,75 +348,85 @@ app.get("/soccer/match/:id/lineups", async (req, res) => {
 	}
 });
 
-// Route for obtaining the matches for a specified league, season, and date
-// Uses the 'hopefully' already cached matches data
-app.get("/soccer/matches/:league/:season/:date", async (req, res) => {
-	console.log("request to backend for matches by date");
-	const { league, season, date } = req.params;
-	const matchesKey = `leaguematches-l=${league}-s=${season}`;
-	const roundsKey = `leaguerounds-l=${league}-s=${season}`;
+// // Route for obtaining the matches for a specified league, season, and date
+// // Uses the 'hopefully' already cached matches data
+// app.get("/soccer/matches/:league/:season/:date", async (req, res) => {
+// 	console.log("request to backend for matches by date");
+// 	const { league, season, date } = req.params;
+// 	const matchesKey = `leaguematches-l=${league}-s=${season}`;
+// 	const roundsKey = `leaguerounds-l=${league}-s=${season}`;
 
-	const cachedMatchesData = await redisClient.get(matchesKey);
-	const cachedRoundsData = await redisClient.get(roundsKey);
+// 	const cachedMatchesData = await redisClient.get(matchesKey);
+// 	const cachedRoundsData = await redisClient.get(roundsKey);
 
-	if (cachedMatchesData) {
-		console.log("Matches Data in cache");
-		// Find the matches for the specified date
-		const matches = JSON.parse(cachedMatchesData);
-		const filteredMatches = filterMatchesByDate(matches, date);
+// 	if (cachedMatchesData) {
+// 		console.log("Matches Data in cache");
 
-		return res.status(200).json({
-			data: {
-				matches: filteredMatches,
-			},
-		});
-	} else {
-		console.log("Matches Data not in cache");
-		const options = {
-			method: "GET",
-			url: "https://api-football-v1.p.rapidapi.com/v3/fixtures",
-			params: {
-				league: league,
-				season: season,
-			},
-			headers: {
-				"X-RapidAPI-Key": process.env.RAPID_API_KEY,
-				"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
-			},
-		};
+// 		// Get the remaining TTL in ms
+// 		const ttl = (await redisClient.ttl(matchesKey)) * 1000;
 
-		try {
-			const response = await axios.request(options);
-			const statusCode = response.status;
+// 		// Find the matches for the specified date
+// 		const matches = JSON.parse(cachedMatchesData);
+// 		const filteredMatches = filterMatchesByDate(matches, date);
 
-			if (statusCode === 200) {
-				const data = response.data.response;
-				const { parsedData, rounds } = parseMatches(data);
+// 		return res.status(200).json({
+// 			data: {
+// 				matches: filteredMatches,
+// 				expiration: ttl,
+// 			},
+// 		});
+// 	} else {
+// 		console.log("Matches Data not in cache");
+// 		const options = {
+// 			method: "GET",
+// 			url: "https://api-football-v1.p.rapidapi.com/v3/fixtures",
+// 			params: {
+// 				league: league,
+// 				season: season,
+// 			},
+// 			headers: {
+// 				"X-RapidAPI-Key": process.env.RAPID_API_KEY,
+// 				"X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+// 			},
+// 		};
 
-				// Save data in cache
-				await redisClient.set(matchesKey, JSON.stringify(parsedData), {
-					EX: ONE_DAY,
-					NX: true,
-				});
-				await redisClient.set(roundsKey, JSON.stringify(rounds), {
-					EX: ONE_DAY,
-					NX: true,
-				});
+// 		try {
+// 			const response = await axios.request(options);
+// 			const statusCode = response.status;
 
-				// Find the matches for the specified date
-				const matches = parsedData;
-				const filteredMatches = filterMatchesByDate(matches, date);
-				return res.status(200).json({ data: { matches: filteredMatches } });
-			} else {
-				return res.status(500).json({
-					error: "Could not obtain matches from API-Football",
-				});
-			}
-		} catch (error) {
-			return res.status(500).json({ error });
-		}
-	}
-});
+// 			if (statusCode === 200) {
+// 				const expirationTime = msToMidnightUTC();
+// 				const data = response.data.response;
+// 				const { parsedData, rounds } = parseMatches(data);
+
+// 				// Save data in cache
+// 				await redisClient.set(matchesKey, JSON.stringify(parsedData), {
+// 					PX: expirationTime,
+// 					NX: true,
+// 				});
+// 				await redisClient.set(roundsKey, JSON.stringify(rounds), {
+// 					PX: expirationTime,
+// 					NX: true,
+// 				});
+
+// 				// Find the matches for the specified date
+// 				const matches = parsedData;
+// 				const filteredMatches = filterMatchesByDate(matches, date);
+// 				return res
+// 					.status(200)
+// 					.json({
+// 						data: { matches: filteredMatches, all: parsedData, expiration: expirationTime },
+// 					});
+// 			} else {
+// 				return res.status(500).json({
+// 					error: "Could not obtain matches from API-Football",
+// 				});
+// 			}
+// 		} catch (error) {
+// 			return res.status(500).json({ error });
+// 		}
+// 	}
+// });
 
 app.listen(port, () => {
 	console.log(`Example app listening on port ${port}`);
