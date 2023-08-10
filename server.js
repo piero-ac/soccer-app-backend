@@ -12,10 +12,21 @@ const parseMatches = require("./parsing-functions/parseMatches.js");
 const parseEvents = require("./parsing-functions/parseEvents.js");
 const parseStatistics = require("./parsing-functions/parseStatistics.js");
 
+// for production
+// let redisClient;
+// (async () => {
+// 	const url = process.env.REDIS_URI;
+// 	redisClient = redis.createClient({ url });
+
+// 	redisClient.on("error", (error) => console.error(`Error : ${error}`));
+
+// 	await redisClient.connect();
+// })();
+
+// for local dev
 let redisClient;
 (async () => {
-	const url = process.env.REDIS_URI;
-	redisClient = redis.createClient({ url });
+	redisClient = redis.createClient();
 
 	redisClient.on("error", (error) => console.error(`Error : ${error}`));
 
@@ -28,6 +39,7 @@ app.get("/soccer/helloworld", (req, res) => {
 	res.json(`Hello World!`);
 });
 
+// Route for obtaining the standings for the specified league and season
 app.get("/soccer/table/:league/:season", async (req, res) => {
 	console.log("request to backend for table");
 	const { league, season } = req.params;
@@ -75,6 +87,7 @@ app.get("/soccer/table/:league/:season", async (req, res) => {
 	}
 });
 
+/// Route for obtaining the top scorers for the specified league and season
 app.get("/soccer/topscorers/:league/:season", async (req, res) => {
 	console.log("request to backend for topscorers");
 	const { league, season } = req.params;
@@ -122,6 +135,7 @@ app.get("/soccer/topscorers/:league/:season", async (req, res) => {
 	}
 });
 
+// Route for obtaining the fixtures for a specified league and season
 app.get("/soccer/matches/:league/:season", async (req, res) => {
 	console.log("request to backend for matches");
 	const { league, season } = req.params;
@@ -180,6 +194,7 @@ app.get("/soccer/matches/:league/:season", async (req, res) => {
 	}
 });
 
+// Route for obtaining the match events for the specified match id
 app.get("/soccer/match/:id/events", async (req, res) => {
 	console.log("request to backend for match events");
 	const { id } = req.params;
@@ -224,6 +239,7 @@ app.get("/soccer/match/:id/events", async (req, res) => {
 	}
 });
 
+// Route for obtaining the match statistics for the specified match id
 app.get("/soccer/match/:id/stats", async (req, res) => {
 	console.log("request to backend for match statistics");
 	const { id } = req.params;
@@ -268,6 +284,7 @@ app.get("/soccer/match/:id/stats", async (req, res) => {
 	}
 });
 
+// Route for obtaining the match lineups for the specified match id
 app.get("/soccer/match/:id/lineups", async (req, res) => {
 	console.log("request to backend for match lineups");
 	const { id } = req.params;
