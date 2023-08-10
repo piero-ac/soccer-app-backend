@@ -11,6 +11,7 @@ function parseMatches(data) {
 				month: "long",
 				day: "numeric",
 			}),
+			dateForMatching: convertToYYYYMMDD(match.fixture.date),
 			time: getTimeInEST(match.fixture.timestamp),
 			dateISOFormat: {
 				timezone: match.fixture.timezone,
@@ -32,9 +33,9 @@ function parseMatches(data) {
 function getTimeInEST(timestamp) {
 	const utcDate = new Date(timestamp * 1000);
 
-	// Convert UTC time to Eastern Standard Time (EST)
-	const estOffset = -5 * 60 * 60 * 1000; // EST offset is -5 hours
-	const estDate = new Date(utcDate.getTime() + estOffset);
+	// Set the time zone offset for EST, including daylight saving time (DST) adjustment
+	const estOffset = -5 * 60 + (utcDate.getTimezoneOffset() < 300 ? 60 : 0);
+	const estDate = new Date(utcDate.getTime() + estOffset * 60 * 1000);
 
 	// Get the hours and minutes in EST
 	const estHours = estDate.getUTCHours();
@@ -47,4 +48,27 @@ function getTimeInEST(timestamp) {
 	return estTime;
 }
 
-module.exports = parseMatches;
+function filterMatchesByDate(data, targetDate) {
+	const filteredMatches = [];
+
+	for (let match of data) {
+		if (match.dateForMatching === targetDate) {
+			filteredMatches.push(match);
+		}
+	}
+
+	return filteredMatches;
+}
+
+function convertToYYYYMMDD(dateString) {
+	const date = new Date(dateString);
+
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+
+	const formattedDate = `${year}-${month}-${day}`;
+	return formattedDate;
+}
+
+module.exports = { parseMatches, filterMatchesByDate };
